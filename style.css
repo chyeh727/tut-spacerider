@@ -1,0 +1,22 @@
+* {
+    margin: 0;
+    padding: 0;
+}
+body {
+    overflow:hidden;
+}
+#splash {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100px;
+    width: 100%;
+    font-size: 56px;
+    text-align: center;
+    line-height: 100px;
+    color: white;
+    font-family: sans-serif;
+}
+#c {
+    background-image:url(darkPurple.png);
+}
