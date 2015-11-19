@@ -154,7 +154,8 @@ document.addEventListener('DOMContentLoaded', function() {
         return Math.sqrt(Math.pow(a[0] - b[0], 2) + Math.pow(a[1] - b[1], 2));
     };
 
-    // The base class for all entities.
+    /* The base class for all entities.
+     */
     class Entity {
         constructor() {
             this.direction = [1, 0];
@@ -165,6 +166,8 @@ document.addEventListener('DOMContentLoaded', function() {
             // in radius
             this.angle = 0;
             this.angleAdjustment = 0;
+            // time to do something
+            this.ttl = 0;
         }
         draw() {
             ctx.save();
@@ -200,6 +203,10 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    /*
+     * The base of all bullets, no matter the enemies' or the players. They
+     * have to be able to check whether they hit any target or not.
+     */
     class Bullet extends Entity {
         constructor(p, a) {
             super();
@@ -237,8 +244,7 @@ document.addEventListener('DOMContentLoaded', function() {
             this.spriteCoords = [856, 983];
             this.spriteDimensions = [16, 37];
             this.velocity = 12;
-            this.angle = Math.PI;
-            this.turn(0);
+            this.turn(Math.PI);
         }
     }
 
@@ -248,30 +254,25 @@ document.addEventListener('DOMContentLoaded', function() {
             this.direction = [0, -1];
             this.spriteCoords = [243, 234];
             this.spriteDimensions = [103, 73];
-            this.position = [w/2, h/2];
+            this.position = [w/2, h * 3 / 5];
             this.velocity = 0;
             this.angle = 0;
             this.angleAdjustment = Math.PI / 2;
             this.radius = this.calculateRadius();
-            this.age = 0;
             this.visible = false;
         }
-
         turnVisible() {
             this.visible = true;
             this.spriteCoords = [211, 939];
             this.spriteDimensions = [99, 77];
             this.radius = this.calculateRadius();
         }
-
         accelerate() {
             this.velocity = Math.min(10, this.velocity + 2);
         }
-
         decelerate() {
             this.velocity = Math.max(-10, this.velocity - 2);
         }
-
         move() {
             if (this.velocity > 0)
                 this.velocity = Math.max(0, this.velocity - 0.4);
@@ -280,7 +281,6 @@ document.addEventListener('DOMContentLoaded', function() {
             this.position[0] = (this.position[0] + this.direction[0] * this.velocity + w) % w;
             this.position[1] = (this.position[1] + this.direction[1] * this.velocity + h) % h;
         }
-
         shoot() {
             laserSound.play();
             myBullets.push(new MyShortBullet(this.position, this.angle));
@@ -302,6 +302,7 @@ document.addEventListener('DOMContentLoaded', function() {
             this.radius = this.calculateRadius();
         }
         move() {
+            // randomly pick a direction
             if (this.position[1] >= h / 3.5) {
                 if (Math.random() < 0.5)
                     this.direction[0] = -0.8;
@@ -311,13 +312,14 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             this.position[0] += this.direction[0] * this.velocity;
             this.position[1] += this.direction[1] * this.velocity;
-            console.log('Evil fighter x, y', this.position[0], this.position[1]);
         }
         shoot() {
             notMyBullets.push(new NotMyShortBullet(this.position, this.angle));
         }
     }
 
+    /* The base of all rock-like stuff, including the debris.
+     */
     class Rock extends Entity {
         constructor() {
             super();
@@ -340,7 +342,6 @@ document.addEventListener('DOMContentLoaded', function() {
             this.position = [p[0], p[1]];
             this.spriteCoords = [c[0], c[1]];
             this.spriteDimensions = [d[0], d[1]];
-            this.age = 0;
             this.turn(0);
         }
     }
@@ -354,6 +355,9 @@ document.addEventListener('DOMContentLoaded', function() {
             this.turn(0);
             this.radius = this.calculateRadius();
 
+            // The debris this rock is going to spawn off when it is destroyed.
+            // We specify this because we want to make sure gray stays gray and
+            // brown stays brown.
             this.debrisSpriteCoords = [406, 235];
             this.debrisSpriteDimensions = [25, 25];
         }
@@ -385,26 +389,42 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    // A collection of rock types. We want to be able to randomly pick one.
     let rockTypes = [BigRockA, BigRockB, BigRockC];
-    
-    let s;
-    let evilFighters = [];
-    let myBullets = [],
-        notMyBullets = [];
-    let rocks = [],
-        debris = [];
 
+    // the player's ship    
+    let s = null;
+
+    // lives
+    let lives;
+
+    // the enemies
+    let evilFighters;
+
+    // the bullet collections
+    let myBullets, notMyBullets;
+
+    // the rock collections, only big ones are harmful
+    let rocks, debris;
+
+    // some difficulity control
     let maxRockCount = 6,
         maxEvilFighterCount = 2;
+
+    // some admin stuff
     let itvl, gameRolling = false;
+
     let pressedKeys = [];
 
     // key press handlers
     $(document)
         .on("keydown", function(e) {
-            if (!gameRolling)
+            if (!gameRolling) {
                 letGameRoll();
-            else {
+            } else if (lives === -1) {
+                splash.innerHTML = '';
+                initGame();
+            } else {
                 if (e.which == 80) {
                     clearInterval(itvl);
                     gameRolling = false;
@@ -421,7 +441,8 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
 
-    let keyPressCallbacks = {
+    let keyPressCallbacks = null;
+    let cbPark = {
         // right
         39: function() {
             s.turn(-Math.PI / 15);
@@ -451,10 +472,6 @@ document.addEventListener('DOMContentLoaded', function() {
     };
     sprites.src = 'sheet.png';
 
-    let initGame = function() {
-        s = new MyFighter();
-    };
-
     let createNewEntities = function() {
         if (Math.random() < 0.04) {
             if (rocks.length < maxRockCount) {
@@ -469,9 +486,11 @@ document.addEventListener('DOMContentLoaded', function() {
     };
 
     let move = function() {
-        for (let i = 0, len = pressedKeys.length; i < len; i++) {
-            if (keyPressCallbacks[pressedKeys[i]])
-                keyPressCallbacks[pressedKeys[i]]();
+        if (keyPressCallbacks) {
+            for (let i = 0, len = pressedKeys.length; i < len; i++) {
+                if (keyPressCallbacks[pressedKeys[i]])
+                    keyPressCallbacks[pressedKeys[i]]();
+            }
         }
 
         if (s !== null)
@@ -479,12 +498,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
         for (let i = 0, len = rocks.length; i < len; i++) {
             rocks[i].move();
-            if (s.visible) {
+            if (s && s.visible && !s.destroyed) {
                 if (rocks[i].collideWith(s)) {
-                    // TODO: fix me
-                    playerExplosionSound.play();
-                    splash.innerHTML = 'You lost';
-                    clearInterval(itvl);
+                    s.destroyed = true;
+                    playerDeathHandler();
                 }
             }
         }
@@ -494,12 +511,11 @@ document.addEventListener('DOMContentLoaded', function() {
             if (Math.random() < 0.1) {
                 evilFighters[i].shoot();
             }
-            if (s.visible) {
+            if (s && s.visible && !s.destroyed) {
                 if (evilFighters[i].collideWith(s)) {
-                    // TODO: fix me
-                    playerExplosionSound.play();
-                    splash.innerHTML = 'You lost';
-                    clearInterval(itvl);
+                    evilFighters[i].destroyed = true;
+                    s.destroyed = true;
+                    playerDeathHandler();
                 }
             }
         }
@@ -514,6 +530,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     // spawn off debris
                     for (let i = 0; i < 3; i++) {
                         let d = new Debris(rocks[j].position, rocks[j].debrisSpriteCoords, rocks[j].debrisSpriteDimensions);
+                        d.ttl = 100;
                         // TODO adjust the speed and direction of the debris
                         debris.push(d);
                     }
@@ -530,15 +547,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
         for (let i = notMyBullets.length - 1; i >= 0; i--) {
             notMyBullets[i].move();
-            if (s.visible) {
+            if (s && s.visible && !s.destroyed) {
                 if (!notMyBullets[i].consumed && notMyBullets[i].hit(s)) {
                     s.destroyed = true;
                     notMyBullets[i].consumed = true;
-                    enemyExplosionSound.play();
-                    // TODO: fix me
-                    playerExplosionSound.play();
-                    splash.innerHTML = 'You lost';
-                    clearInterval(itvl);
+                    playerDeathHandler();
                 }
             }
         }
@@ -548,17 +561,21 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     };
 
-    let addAge = function() {
-        if (s !== null) {
-            if (s.age < 150) {
-                s.age += 1;
+    /* Updates the internal timer of the entities.
+     */
+    let decreaseTTL = function() {
+        if (s) {
+            if (s.ttl !== 0) {
+                s.ttl -= 1;
             }
         }
         for (let i = debris.length - 1; i >= 0; i--) {
-            debris[i].age += 1;
+            debris[i].ttl -= 1;
         }
     };
 
+    /* Puts things on the canvas or take them out.
+     */
     let draw = function() {
         canvas.width = canvas.width;
 
@@ -593,7 +610,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         for (let i = debris.length - 1; i >= 0; i--) {
-            if (debris[i].age >= 100) {
+            if (debris[i].ttl === 0) {
                 debris.splice(i, 1);
             } else {
                 debris[i].draw();
@@ -601,18 +618,54 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         if (s !== null) {
-            if (s.age == 150 && !s.visible) {
+            if (s.ttl === 0 && !s.visible) {
                 s.turnVisible();
             }
             s.draw();
         }
     };
 
+    let bringOnMyNewFighter = function() {
+        s = new MyFighter();
+        s.ttl = 150;
+        keyPressCallbacks = cbPark;
+        cbPark = null;
+    };
+
+    /* What do we do when our fighter crashes.
+     */
+    let playerDeathHandler = function() {
+        playerExplosionSound.play();
+        console.log('Death handler shouting, lives =', lives);
+        cbPark = keyPressCallbacks;
+        keyPressCallbacks = null;
+        if (lives-- === 0) {
+            splash.innerHTML = 'You lost. Press any key to start again.';
+            s = null;
+        } else {
+            setTimeout(bringOnMyNewFighter, 3 * 1000);
+        }
+    };
+
+    /* Sets the game up with the initial state.
+     */
+    let initGame = function() {
+        lives = 2;
+        bringOnMyNewFighter();
+        evilFighters = [];
+        myBullets = [];
+        notMyBullets = [];
+        rocks = [];
+        debris = [];
+    };
+
+    /* Gets the time running.
+     */
     let letGameRoll = function() {
         splash.innerHTML = '';
         itvl = setInterval(function() {
             createNewEntities();
-            addAge();
+            decreaseTTL();
             move();
             draw();
         }, 30);
