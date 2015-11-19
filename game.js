@@ -260,6 +260,8 @@ document.addEventListener('DOMContentLoaded', function() {
             this.angleAdjustment = Math.PI / 2;
             this.radius = this.calculateRadius();
             this.visible = false;
+            this.ttl = 150;
+            this.explodeStage = 0;
         }
         turnVisible() {
             this.visible = true;
@@ -285,6 +287,18 @@ document.addEventListener('DOMContentLoaded', function() {
             laserSound.play();
             myBullets.push(new MyShortBullet(this.position, this.angle));
         }
+        explodeStage1() {
+            this.spriteCoords = [594, 961];
+            this.spriteDimensions = [50, 50];
+            this.ttl = 2;
+            this.explodeStage = 1;
+        }
+        explodeStage2() {
+            this.spriteCoords = [435, 325];
+            this.spriteDimensions = [46, 46];
+            this.ttl = 3;
+            this.explodeStage = 2;
+        }
     }
 
     class EvilFighter extends Entity {
@@ -300,6 +314,7 @@ document.addEventListener('DOMContentLoaded', function() {
             this.angleAdjustment = -Math.PI / 2;
             this.destroyed = false;
             this.radius = this.calculateRadius();
+            this.explodeStage = 0;
         }
         move() {
             // randomly pick a direction
@@ -315,6 +330,18 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         shoot() {
             notMyBullets.push(new NotMyShortBullet(this.position, this.angle));
+        }
+        explodeStage1() {
+            this.spriteCoords = [581, 661];
+            this.spriteDimensions = [46, 46];
+            this.ttl = 2;
+            this.explodeStage = 1;
+        }
+        explodeStage2() {
+            this.spriteCoords = [603, 600];
+            this.spriteDimensions = [46, 46];
+            this.ttl = 3;
+            this.explodeStage = 2;
         }
     }
 
@@ -343,6 +370,7 @@ document.addEventListener('DOMContentLoaded', function() {
             this.spriteCoords = [c[0], c[1]];
             this.spriteDimensions = [d[0], d[1]];
             this.turn(0);
+            this.ttl = 100;
         }
     }
 
@@ -493,7 +521,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
 
-        if (s !== null)
+        if (s !== null && !s.destroyed)
             s.move();
 
         for (let i = 0, len = rocks.length; i < len; i++) {
@@ -507,15 +535,18 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         for (let i = 0, len = evilFighters.length; i < len; i++) {
-            evilFighters[i].move();
-            if (Math.random() < 0.1) {
-                evilFighters[i].shoot();
-            }
-            if (s && s.visible && !s.destroyed) {
-                if (evilFighters[i].collideWith(s)) {
-                    evilFighters[i].destroyed = true;
-                    s.destroyed = true;
-                    playerDeathHandler();
+            if (!evilFighters[i].destroyed) {
+                evilFighters[i].move();
+                if (Math.random() < 0.1) {
+                    evilFighters[i].shoot();
+                }
+                if (s && s.visible && !s.destroyed) {
+                    if (evilFighters[i].collideWith(s)) {
+                        evilFighters[i].destroyed = true;
+                        s.destroyed = true;
+                        evilFighters[i].explodeStage1();
+                        playerDeathHandler();
+                    }
                 }
             }
         }
@@ -528,9 +559,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     myBullets[i].consumed = true;
                     enemyExplosionSound.play();
                     // spawn off debris
-                    for (let i = 0; i < 3; i++) {
+                    for (let i = 0; i < 2; i++) {
                         let d = new Debris(rocks[j].position, rocks[j].debrisSpriteCoords, rocks[j].debrisSpriteDimensions);
-                        d.ttl = 100;
                         // TODO adjust the speed and direction of the debris
                         debris.push(d);
                     }
@@ -540,6 +570,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (!myBullets[i].consumed && myBullets[i].hit(evilFighters[j])) {
                     evilFighters[j].destroyed = true;
                     myBullets[i].consumed = true;
+                    evilFighters[j].explodeStage1();
                     enemyExplosionSound.play();
                 }
             }
@@ -567,10 +598,18 @@ document.addEventListener('DOMContentLoaded', function() {
         if (s) {
             if (s.ttl !== 0) {
                 s.ttl -= 1;
+            } else if (s.explodeStage === 1) {
+                s.explodeStage2();
             }
         }
         for (let i = debris.length - 1; i >= 0; i--) {
             debris[i].ttl -= 1;
+        }
+        for (let i = 0, len = evilFighters.length; i < len; i++) {
+            if (evilFighters[i].ttl !== 0)
+                evilFighters[i].ttl -= 1;
+            else if (evilFighters[i].explodeStage === 1)
+                evilFighters[i].explodeStage2();
         }
     };
 
@@ -603,7 +642,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         for (let i = evilFighters.length - 1; i >= 0; i--) {
-            if (evilFighters[i].destroyed || evilFighters[i].isOutOfSight())
+            if ((evilFighters[i].explodeStage === 2 && evilFighters[i].ttl === 0) || evilFighters[i].isOutOfSight())
                 evilFighters.splice(i, 1);
             else
                 evilFighters[i].draw();
@@ -618,16 +657,35 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         if (s !== null) {
-            if (s.ttl === 0 && !s.visible) {
-                s.turnVisible();
+            if (s.ttl === 0) {
+                if (!s.visible)
+                    s.turnVisible();
+                else if (s.explodeStage === 2)
+                    s = null;
             }
-            s.draw();
+            if (s)
+                s.draw();
         }
+
+        drawLives();
+    };
+
+    let drawLives = function() {
+        // my fighter small
+        ctx.drawImage(sprites, 483, 359, 31, 24, 30, 30, 31, 24);
+        // times
+        ctx.drawImage(sprites, 382, 814, 17, 17, 76, 36, 17, 17);
+
+        if (lives === 2)
+            ctx.drawImage(sprites, 406, 290, 19, 20, 108, 34, 19, 20);
+        else if (lives === 1)
+            ctx.drawImage(sprites, 205, 688, 20, 20, 108, 34, 20, 20);
+        else
+            ctx.drawImage(sprites, 367, 644, 19, 20, 108, 34, 19, 20);
     };
 
     let bringOnMyNewFighter = function() {
         s = new MyFighter();
-        s.ttl = 150;
         keyPressCallbacks = cbPark;
         cbPark = null;
     };
@@ -639,9 +697,9 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('Death handler shouting, lives =', lives);
         cbPark = keyPressCallbacks;
         keyPressCallbacks = null;
+        s.explodeStage1();
         if (lives-- === 0) {
             splash.innerHTML = 'You lost. Press any key to start again.';
-            s = null;
         } else {
             setTimeout(bringOnMyNewFighter, 3 * 1000);
         }
