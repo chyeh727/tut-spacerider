@@ -10,6 +10,13 @@ document.addEventListener('DOMContentLoaded', function() {
     canvas.height = h;
     const ctx = canvas.getContext('2d');
 
+    let playerExplosionSound = new Audio();
+    playerExplosionSound.src = 'player_explosion.ogg';
+    let enemyExplosionSound = new Audio();
+    enemyExplosionSound.src = 'enemy_explosion.ogg';
+    let laserSound = new Audio();
+    laserSound.src = 'laser.ogg';
+
     /*
         // blue fighter small
             483, 359, 31, 24
@@ -275,6 +282,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         shoot() {
+            laserSound.play();
             myBullets.push(new MyShortBullet(this.position, this.angle));
         }
     }
@@ -474,6 +482,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (s.visible) {
                 if (rocks[i].collideWith(s)) {
                     // TODO: fix me
+                    playerExplosionSound.play();
                     splash.innerHTML = 'You lost';
                     clearInterval(itvl);
                 }
@@ -488,6 +497,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (s.visible) {
                 if (evilFighters[i].collideWith(s)) {
                     // TODO: fix me
+                    playerExplosionSound.play();
                     splash.innerHTML = 'You lost';
                     clearInterval(itvl);
                 }
@@ -500,6 +510,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (!myBullets[i].consumed && myBullets[i].hit(rocks[j])) {
                     rocks[j].destroyed = true;
                     myBullets[i].consumed = true;
+                    enemyExplosionSound.play();
                     // spawn off debris
                     for (let i = 0; i < 3; i++) {
                         let d = new Debris(rocks[j].position, rocks[j].debrisSpriteCoords, rocks[j].debrisSpriteDimensions);
@@ -512,6 +523,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (!myBullets[i].consumed && myBullets[i].hit(evilFighters[j])) {
                     evilFighters[j].destroyed = true;
                     myBullets[i].consumed = true;
+                    enemyExplosionSound.play();
                 }
             }
         }
@@ -522,7 +534,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (!notMyBullets[i].consumed && notMyBullets[i].hit(s)) {
                     s.destroyed = true;
                     notMyBullets[i].consumed = true;
+                    enemyExplosionSound.play();
                     // TODO: fix me
+                    playerExplosionSound.play();
                     splash.innerHTML = 'You lost';
                     clearInterval(itvl);
                 }
