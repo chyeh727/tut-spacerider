@@ -11,11 +11,11 @@ document.addEventListener('DOMContentLoaded', function() {
     const ctx = canvas.getContext('2d');
 
     let playerExplosionSound = new Audio();
-    playerExplosionSound.src = 'player_explosion.ogg';
+    playerExplosionSound.src = 'player_explosion.mp3';
     let enemyExplosionSound = new Audio();
-    enemyExplosionSound.src = 'enemy_explosion.ogg';
+    enemyExplosionSound.src = 'enemy_explosion.mp3';
     let laserSound = new Audio();
-    laserSound.src = 'laser.ogg';
+    laserSound.src = 'laser.mp3';
 
     /*
         // blue fighter small
