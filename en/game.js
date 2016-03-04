@@ -165,7 +165,7 @@ document.addEventListener('DOMContentLoaded', function() {
             this.velocity = 0;
             // in radians
             this.angle = 0;
-            this.angleAdjustment = 0;
+            this.angleOffset = 0;
             // time to do something
             this.ttl = 0;
         }
@@ -174,7 +174,7 @@ document.addEventListener('DOMContentLoaded', function() {
             ctx.translate(
                 this.position[0], 
                 this.position[1]);
-            ctx.rotate(-this.angle);
+            ctx.rotate(this.angle);
             ctx.drawImage(
                     sprites, 
                     this.spriteCoords[0], this.spriteCoords[1], 
@@ -186,9 +186,9 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         turn(radians) {
             this.angle += radians;
-            let a = this.angle + this.angleAdjustment;
+            let a = this.angle + this.angleOffset;
             this.direction[0] = Math.cos(a);
-            this.direction[1] = -Math.sin(a);
+            this.direction[1] = Math.sin(a);
         }
         isOutOfSight() {
             let x = this.position[0],
@@ -212,7 +212,7 @@ document.addEventListener('DOMContentLoaded', function() {
             super();
             this.position = [p[0], p[1]];
             this.angle = a;
-            this.angleAdjustment = Math.PI / 2;
+            this.angleOffset = -Math.PI / 2;
             this.consumed = false;
         }
         move() {
@@ -244,7 +244,7 @@ document.addEventListener('DOMContentLoaded', function() {
             this.spriteCoords = [856, 983];
             this.spriteDimensions = [16, 37];
             this.velocity = 12;
-            this.turn(Math.PI);
+            this.turn(-Math.PI);
         }
     }
 
@@ -257,7 +257,7 @@ document.addEventListener('DOMContentLoaded', function() {
             this.position = [w/2, h * 3 / 5];
             this.velocity = 0;
             this.angle = 0;
-            this.angleAdjustment = Math.PI / 2;
+            this.angleOffset = -Math.PI / 2;
             this.radius = this.calculateRadius();
             this.visible = false;
             this.ttl = 150;
@@ -311,7 +311,7 @@ document.addEventListener('DOMContentLoaded', function() {
             this.position = [w * Math.random(), 0];
             this.velocity = 4;
             this.angle = 0;
-            this.angleAdjustment = -Math.PI / 2;
+            this.angleOffset = Math.PI / 2;
             this.destroyed = false;
             this.radius = this.calculateRadius();
             this.explodeStage = 0;
@@ -354,7 +354,7 @@ document.addEventListener('DOMContentLoaded', function() {
             this.position = [w * Math.random(), h * Math.random() / 3];
             this.velocity = Math.random() * 3 + 2;
             this.angle = Math.PI * Math.random();
-            this.angleAdjustment = Math.PI * Math.random();
+            this.angleOffset = -Math.PI * Math.random();
             this.distroyed = false;
         }
         move() {
@@ -472,11 +472,11 @@ document.addEventListener('DOMContentLoaded', function() {
     let cbPark = {
         // right
         39: function() {
-            s.turn(-Math.PI / 15);
+            s.turn(Math.PI / 15);
         },
         // left
         37: function() {
-            s.turn(Math.PI / 15);
+            s.turn(-Math.PI / 15);
         },
         // up
         38: function() {
