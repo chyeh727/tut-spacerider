@@ -163,7 +163,7 @@ document.addEventListener('DOMContentLoaded', function() {
             this.spriteDimensions = [0, 0];
             this.position = [0, 0];
             this.velocity = 0;
-            // in radius
+            // in radians
             this.angle = 0;
             this.angleAdjustment = 0;
             // time to do something
@@ -184,8 +184,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     this.spriteDimensions[0], this.spriteDimensions[1]);
             ctx.restore();
         }
-        turn(radius) {
-            this.angle += radius;
+        turn(radians) {
+            this.angle += radians;
             let a = this.angle + this.angleAdjustment;
             this.direction[0] = Math.cos(a);
             this.direction[1] = -Math.sin(a);
@@ -445,29 +445,28 @@ document.addEventListener('DOMContentLoaded', function() {
     let pressedKeys = [];
 
     // key press handlers
-    $(document)
-        .on("keydown", function(e) {
-            if (!gameRolling) {
-                letGameRoll();
-            } else if (lives === -1) {
-                splash.innerHTML = '';
-                initGame();
-            } else {
-                if (e.which == 80) {
-                    clearInterval(itvl);
-                    gameRolling = false;
-                    splash.innerHTML = 'Press any key to resume';
-                } else if (pressedKeys.indexOf(e.which) === -1) {
-                    pressedKeys.push(e.which);
-                }
+    document.onkeydown = function(e) {
+        if (!gameRolling) {
+            letGameRoll();
+        } else if (lives === -1) {
+            splash.innerHTML = '';
+            initGame();
+        } else {
+            if (e.which == 80) {
+                clearInterval(itvl);
+                gameRolling = false;
+                splash.innerHTML = 'Press any key to resume';
+            } else if (pressedKeys.indexOf(e.which) === -1) {
+                pressedKeys.push(e.which);
             }
-        })
-        .on("keyup", function(e) {
-            let keyIdx = pressedKeys.indexOf(e.which);
-            if (keyIdx !== -1) {
-                pressedKeys.splice(keyIdx, 1);
-            }
-        });
+        }
+    };
+    document.onkeyup = function(e) {
+        let keyIdx = pressedKeys.indexOf(e.which);
+        if (keyIdx !== -1) {
+            pressedKeys.splice(keyIdx, 1);
+        }
+    };
 
     let keyPressCallbacks = null;
     let cbPark = {
